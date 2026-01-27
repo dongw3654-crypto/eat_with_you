@@ -31,7 +31,7 @@ st.markdown(
 total_budget = st.slider(
     "💰 今天这顿饭的总预算（两个人）",
     min_value=10,
-    max_value=100,
+    max_value=200,
     value=40,
     step=5
 )
