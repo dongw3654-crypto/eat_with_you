@@ -5,6 +5,10 @@ import pandas as pd
 #conda env 启动
 #启动提示
 # streamlit run eat_with_you.py
+#git add outside_menu.csv
+#git commit -m "Update menu: adjust prices and add new options"
+#git push
+
 # 读取 CSV
 # =====================
 df = pd.read_csv("outside_menu.csv")
@@ -31,7 +35,7 @@ st.markdown(
 total_budget = st.slider(
     "💰 今天这顿饭的总预算（两个人）",
     min_value=10,
-    max_value=200,
+    max_value=200, #最大值是200
     value=40,
     step=5
 )
