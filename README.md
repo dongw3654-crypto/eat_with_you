@@ -16,9 +16,15 @@
 pip install -r requirements.txt
 streamlit run eat_with_you.py
 ```
+## 云部署
+网址如下：
+`https://eatwithyoupy.streamlit.app/`
 
 ## 技术栈
 
 - Python 3.11+
 - Streamlit
 - Pandas
+
+## 如何修改并保存菜单
+在`https://github.com/ytu2023/eat_with_you/edit/main/outside_menu.csv`点击修改文件，修改完后保存一下就好了。
