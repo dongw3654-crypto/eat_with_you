@@ -537,7 +537,7 @@ with tab2:
     st.info(
         "💡 **云部署提示**：在网页上「保存到本地」只对当前会话有效哦。"
         "想永久保留修改，请点击「📥 导出 CSV」下载到电脑，下次打开时上传恢复。"
-        "或者直接在 [GitHub](https://github.com/ningliu-1994/eat_with_you/edit/main/outside_menu.csv) 上编辑 CSV 文件。"
+        "或者直接在 [GitHub](https://github.com/ytu2023/eat_with_you/blob/main/outside_menu.csv) 上编辑 CSV 文件。"
     )
 
 # ============================================================
