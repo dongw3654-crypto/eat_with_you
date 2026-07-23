@@ -224,23 +224,25 @@ inject_custom_css()
 # ============================================================
 def pick_combination(df, total_budget):
     """
-    从菜单中抽取两道不同菜品的组合，总价不超过预算。
+    从菜单中抽取两道不同菜品的组合。
+    CSV 中存的是单价（每人），实际花销 = 单价 × 2 人。
+    约束：lunch单价×2 + dinner单价×2 ≤ total_budget
     返回 (lunch_row, dinner_row) 或 (None, None)。
     """
-    affordable = df[df["cost"] <= total_budget].copy()
+    affordable = df[df["cost"] * 2 <= total_budget].copy()
 
     if len(affordable) < 2:
         return None, None
 
-    # 生成所有合法组合
+    # 生成所有合法组合（按两人总价计算）
     pairs = []
     indices = affordable.index.tolist()
     for i in range(len(indices)):
         for j in range(len(indices)):
             if i == j:
                 continue
-            cost_i = affordable.loc[indices[i], "cost"]
-            cost_j = affordable.loc[indices[j], "cost"]
+            cost_i = affordable.loc[indices[i], "cost"] * 2  # 两人总价
+            cost_j = affordable.loc[indices[j], "cost"] * 2
             if cost_i + cost_j <= total_budget:
                 pairs.append((indices[i], indices[j]))
 
@@ -261,24 +263,30 @@ def get_food_emoji(dish_name):
     return DEFAULT_EMOJI
 
 
+def fmt_price(cost):
+    """格式化单价显示"""
+    if cost == int(cost):
+        return f"¥{int(cost)}"
+    else:
+        return f"¥{cost:.1f}"
+
 def render_meal_card(label, row, emoji):
-    """渲染单个菜品卡片 HTML"""
+    """渲染单个菜品卡片 HTML，显示单价及两人总价"""
     card_class = "lunch-card" if label == "lunch" else "dinner-card"
     restaurant = row["restaurant"]
     dish = row["dish"]
-    cost = row["cost"]
-    # 价格整数时不显示小数点
-    if cost == int(cost):
-        price_str = f"¥{int(cost)}"
-    else:
-        price_str = f"¥{cost:.1f}"
+    cost_per = row["cost"]        # 单价
+    cost_two = cost_per * 2       # 两人总价
 
     return f"""
     <div class="meal-card {card_class}">
         <div class="meal-emoji">{emoji}</div>
         <div class="meal-restaurant">🏠 {restaurant}</div>
         <div class="meal-dish">{dish}</div>
-        <div class="meal-price">{price_str}</div>
+        <div class="meal-price">{fmt_price(cost_per)}<span style="font-size:0.6em;color:#636E72;"> /人</span></div>
+        <div style="font-size:0.85em;color:#636E72;margin-top:2px;">
+            👫 两人共 {fmt_price(cost_two)}
+        </div>
     </div>
     """
 
@@ -318,7 +326,7 @@ with tab1:
     st.markdown('<div class="budget-section">', unsafe_allow_html=True)
 
     total_budget = st.slider(
-        "💰 今天这顿饭的总预算（两个人）",
+        "💰 今天两顿饭的总预算（两人 × 午饭 + 两人 × 晚饭）",
         min_value=10,
         max_value=100,
         value=40,
@@ -326,11 +334,11 @@ with tab1:
         key="budget_slider"
     )
 
-    # 预算提示
+    # 预算提示（按每人每顿最低 ¥5 估算，两顿×两人 = 最低 ¥20）
     if total_budget < 20:
-        st.warning("💡 预算比较紧哦，可能不太够两个人吃两顿～要不要调高一点？")
+        st.warning("💡 预算比较紧哦，每人每顿不到 ¥5，可能不太够～")
     elif total_budget < 40:
-        st.info("💡 预算适中，可以吃得简单温馨～")
+        st.info("💡 预算适中，每人每顿 ¥5~10，简单温馨～")
     elif total_budget < 70:
         st.info("💡 预算充裕，可以吃得很丰盛啦 ✨")
     else:
@@ -357,7 +365,7 @@ with tab1:
                     "time": now,
                     "lunch": f"{lunch['restaurant']}·{lunch['dish']}",
                     "dinner": f"{dinner['restaurant']}·{dinner['dish']}",
-                    "total": int(lunch["cost"]) + int(dinner["cost"]),
+                    "total": (lunch["cost"] + dinner["cost"]) * 2,
                     "budget": total_budget,
                 })
                 if len(st.session_state.history) > 10:
@@ -377,7 +385,7 @@ with tab1:
                         "time": now,
                         "lunch": f"{lunch['restaurant']}·{lunch['dish']}",
                         "dinner": f"{dinner['restaurant']}·{dinner['dish']}",
-                        "total": int(lunch["cost"]) + int(dinner["cost"]),
+                        "total": (lunch["cost"] + dinner["cost"]) * 2,
                         "budget": st.session_state.locked_budget,
                     })
                     if len(st.session_state.history) > 10:
@@ -403,16 +411,22 @@ with tab1:
             emoji = get_food_emoji(dinner["dish"])
             st.markdown(render_meal_card("dinner", dinner, emoji), unsafe_allow_html=True)
 
-        # 合计栏
-        total_cost = int(lunch["cost"]) + int(dinner["cost"])
-        if total_cost <= budget_used:
+        # 合计栏（CSV 存单价，两人总价 = 单价×2）
+        lunch_per = lunch["cost"]
+        dinner_per = dinner["cost"]
+        total_two = (lunch_per + dinner_per) * 2
+
+        if total_two <= budget_used:
             bar_class = "total-bar in-budget"
             icon = "✅"
-            msg = f"合计 ¥{total_cost} / ¥{budget_used} — 在预算内，完美！"
+            msg = (
+                f"午饭 {fmt_price(lunch_per)}×2 + 晚饭 {fmt_price(dinner_per)}×2 "
+                f"= {fmt_price(total_two)} / ¥{budget_used} — 在预算内，完美！"
+            )
         else:
             bar_class = "total-bar over-budget"
             icon = "⚠️"
-            msg = f"合计 ¥{total_cost} / ¥{budget_used} — 超出预算 ¥{total_cost - budget_used}"
+            msg = f"合计 {fmt_price(total_two)} / ¥{budget_used} — 超出 ¥{total_two - budget_used}"
 
         st.markdown(
             f'<div class="{bar_class}">{icon} {msg}</div>',
@@ -490,7 +504,7 @@ with tab2:
                 width="medium",
             ),
             "cost": st.column_config.NumberColumn(
-                "两人总价 (¥)",
+                "单价 /人 (¥)",
                 min_value=0,
                 step=1,
                 width="small",
